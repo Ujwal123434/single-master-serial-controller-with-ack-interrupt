@@ -37,6 +37,9 @@ rtl/
 └── serial_master.v # Master controller RTL
 tb/
 └── tb_serial_master.v # Testbench with behavioral slave and ACK model
+sim/
+└── output_wave for tx_data 0f
+└──schematics
 ```
 ---
 ### Simulation Steps (Vivado)
