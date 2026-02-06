@@ -33,13 +33,17 @@ The project focuses on FSM-based RTL design, correct open-drain bus behavior, cl
 
 ## File Structure
 ```
-rtl/
-└── serial_master.v # Master controller RTL
-tb/
-└── tb_serial_master.v # Testbench with behavioral slave and ACK model
-sim/
-└── output_wave for tx_data 0f
-└──schematics
+single-master-serial-controller-with-ack-interrupt
+|
+|--rtl/
+|   └── serial_master.v # Master controller RTL
+|--tb/
+|    └── tb_serial_master.v # Testbench with behavioral slave and ACK model
+|--sim/
+|   └── output_wave for tx_data 0f
+|   └── schematics
+|
+└── README.md
 ```
 ---
 ### Simulation Steps (Vivado)
