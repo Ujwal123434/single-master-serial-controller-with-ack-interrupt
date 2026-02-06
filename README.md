@@ -35,11 +35,11 @@ The project focuses on FSM-based RTL design, correct open-drain bus behavior, cl
 ```
 single-master-serial-controller-with-ack-interrupt
 |
-|--rtl/
+├── rtl/
 |   └── serial_master.v # Master controller RTL
-|--tb/
+├── tb/
 |    └── tb_serial_master.v # Testbench with behavioral slave and ACK model
-|--sim/
+├── sim/
 |   └── output_wave for tx_data 0f
 |   └── schematics
 |
