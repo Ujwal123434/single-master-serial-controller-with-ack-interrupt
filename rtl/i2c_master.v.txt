@@ -1,0 +1,192 @@
+// serial_master.v
+module serial_master (
+    input       clk,
+    input       rst_n,
+    input       start,
+    input [7:0] tx_data,
+    output      scl,
+    inout       sda,
+    output      done,
+    output      error,
+    output      intr
+);
+
+// FSM states
+localparam [3:0] IDLE      = 4'b0000;
+localparam [3:0] START1    = 4'b0001;
+localparam [3:0] START2    = 4'b0010;
+localparam [3:0] DATA      = 4'b0011;
+localparam [3:0] ACK       = 4'b0100;
+localparam [3:0] STOP1     = 4'b0101;
+localparam [3:0] STOP2     = 4'b0110;
+localparam [3:0] DONE_OK   = 4'b0111;
+localparam [3:0] DONE_ERR  = 4'b1000;
+
+// Internal registers
+reg [3:0] state_r, state_n;
+reg [7:0] shift_r, shift_n;
+reg [2:0] bit_cnt_r, bit_cnt_n;
+reg       scl_en_r, scl_en_n;
+reg       sda_oe_r, sda_oe_n;
+reg       done_r, done_n;
+reg       error_r, error_n;
+reg       intr_r, intr_n;
+
+// Clock divider registers
+reg [7:0] clk_div_r;
+reg       scl_internal;
+reg       scl_prev;
+
+// SCL generation (50% duty cycle)
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        clk_div_r <= 8'h00;
+        scl_internal <= 1'b1;
+        scl_prev <= 1'b1;
+    end else begin
+        clk_div_r <= clk_div_r + 8'h01;
+        scl_prev <= scl_internal;
+        if (clk_div_r == 8'hFF) begin
+            scl_internal <= ~scl_internal;
+        end
+    end
+end
+
+// SCL output - only when enabled
+assign scl = (scl_en_r) ? scl_internal : 1'b1;
+
+// SDA open-drain implementation
+assign sda = (sda_oe_r) ? 1'b0 : 1'bz;
+
+// Registered outputs
+assign done  = done_r;
+assign error = error_r;
+assign intr  = intr_r;
+
+// FSM sequential logic
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        state_r    <= IDLE;
+        shift_r    <= 8'h00;
+        bit_cnt_r  <= 3'b000;
+        scl_en_r   <= 1'b0;
+        sda_oe_r   <= 1'b0;
+        done_r     <= 1'b0;
+        error_r    <= 1'b0;
+        intr_r     <= 1'b0;
+    end else begin
+        state_r    <= state_n;
+        shift_r    <= shift_n;
+        bit_cnt_r  <= bit_cnt_n;
+        scl_en_r   <= scl_en_n;
+        sda_oe_r   <= sda_oe_n;
+        done_r     <= done_n;
+        error_r    <= error_n;
+        intr_r     <= intr_n;
+    end
+end
+
+// FSM combinational logic
+always @(*) begin
+    // Default assignments
+    state_n   = state_r;
+    shift_n   = shift_r;
+    bit_cnt_n = bit_cnt_r;
+    scl_en_n  = scl_en_r;
+    sda_oe_n  = sda_oe_r;
+    done_n    = done_r;
+    error_n   = error_r;
+    intr_n    = 1'b0;
+    
+    case (state_r)
+        IDLE: begin
+            scl_en_n = 1'b0;
+            sda_oe_n = 1'b0;
+            done_n   = 1'b0;
+            error_n  = 1'b0;
+            if (start) begin
+                state_n = START1;
+                shift_n = tx_data;
+                bit_cnt_n = 3'b000;
+            end
+        end
+        
+        START1: begin
+            sda_oe_n = 1'b1;
+            scl_en_n = 1'b0;
+            state_n = START2;
+        end
+        
+        START2: begin
+            sda_oe_n = 1'b1;
+            scl_en_n = 1'b1;
+            state_n = DATA;
+        end
+        
+        DATA: begin
+            sda_oe_n = (shift_r[7]) ? 1'b0 : 1'b1;
+            
+            if (scl_internal == 1'b0 && scl_prev == 1'b1) begin
+                shift_n = {shift_r[6:0], 1'b1};
+                if (bit_cnt_r == 3'b111) begin
+                    state_n = ACK;
+                    sda_oe_n = 1'b0;
+                end else begin
+                    bit_cnt_n = bit_cnt_r + 3'b001;
+                end
+            end
+        end
+        
+        ACK: begin
+            sda_oe_n = 1'b0;
+            
+            if (scl_internal == 1'b1 && scl_prev == 1'b0) begin
+                if (sda == 1'b0) begin
+                    state_n = STOP1;
+                end else begin
+                    state_n = STOP1;
+                    error_n = 1'b1;
+                end
+            end
+        end
+        
+        STOP1: begin
+            sda_oe_n = 1'b1;
+            scl_en_n = 1'b1;
+            
+            if (scl_internal == 1'b1) begin
+                state_n = STOP2;
+            end
+        end
+        
+        STOP2: begin
+            sda_oe_n = 1'b0;
+            scl_en_n = 1'b0;
+            
+            if (error_r) begin
+                state_n = DONE_ERR;
+            end else begin
+                state_n = DONE_OK;
+            end
+        end
+        
+        DONE_OK: begin
+            done_n = 1'b1;
+            intr_n = 1'b1;
+            state_n = IDLE;
+        end
+        
+        DONE_ERR: begin
+            error_n = 1'b1;
+            done_n = 1'b1;
+            intr_n = 1'b1;
+            state_n = IDLE;
+        end
+        
+        default: begin
+            state_n = IDLE;
+        end
+    endcase
+end
+
+endmodule
