@@ -32,12 +32,25 @@ The project focuses on FSM-based RTL design, correct open-drain bus behavior, cl
 ---
 
 ## File Structure
+```
 rtl/
 └── serial_master.v # Master controller RTL
 tb/
 └── tb_serial_master.v # Testbench with behavioral slave and ACK model
-
+```
 ---
+### Simulation Steps (Vivado)
+
+1. Open Vivado and create a new project.
+2. Add the following files:
+   - rtl/alu.v
+   - tb/alu_tb.v
+3. Set `alu_tb.v` as the top module.
+4. Click **Run Simulation** → **Run Behavioral Simulation**.
+5. Observe the waveform window.
+6. Click **Open Elborated design** → **Schematic**.
+7. Observe the schematic window
+8. Verify that the output matches the expected ALU operation for each select input.
 
 ## Simulation and Verification
 The design is verified using a Verilog testbench that includes:
