@@ -43,9 +43,9 @@ tb/
 
 1. Open Vivado and create a new project.
 2. Add the following files:
-   - rtl/alu.v
-   - tb/alu_tb.v
-3. Set `alu_tb.v` as the top module.
+   - rtl/serial_master.v
+   - tb/tb_serial_master.v
+3. Set `tb_serial_master.v` as the top module.
 4. Click **Run Simulation** → **Run Behavioral Simulation**.
 5. Observe the waveform window.
 6. Click **Open Elborated design** → **Schematic**.
